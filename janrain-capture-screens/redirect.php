@@ -6,19 +6,20 @@
  ** logout   = logs user out of phpBB (and Capture)
  ** refresh  = refreshes the token of current user
  ** update   = updates user meta
- ** TODO: screen	 = load specific screen
+ ** //TODO: screen	 = load specific screen
  ** auth     = login/register
  *
  */
-
 
 	// vars needed to load common.php
     define('IN_PHPBB', true);
     $phpbb_root_path = dirname(__FILE__).'/../';
     $phpEx = 'php';
+
     // expired cookie date
 	$exp = new DateTime();
     $exp = $exp->setTimestamp(time()-360000)->format('Y M d h:i:s');
+
     // includes
     require_once $phpbb_root_path."common.$phpEx";
     require_once $phpbb_root_path."includes/functions_user.$phpEx";
@@ -33,7 +34,7 @@
     	finish_redirect(generate_board_url() . "/ucp.php?mode=logout&sid=$sid", $cookie);
     }
 
-    /*** token refresh mode ***/
+    /*** refresh token mode ***/
     if(request_var('refresh','') == "true") {
     	// refresh token
     	$api = new JanrainCaptureAPI();
@@ -47,16 +48,22 @@
     	$user_entity = $api->call('entity', false, $_COOKIE['capture_access_token']);
     	$user_entity = $user_entity['result'];
     	// mapping
-    	// $loc = $user_entity['primaryAddress']['city'] . ', ' . $user_entity['primaryAddress']['stateAbbreviation'];
       	$data['gender']   = $user_entity['gender'];
-      	$data['location'] = $user_entity['currentLocation']; //(trim($loc) == ",") ? null : $loc;
+      	$data['location'] = $user_entity['currentLocation'];
       	// update user data
-      	//var_dump($user_entity['uuid']);die;
     	if ( update_user_data($user_entity['uuid'], $data) != true ) {
     		header('HTTP/1.1 400 Bad Request');
     		exit();
     	}
     	// passing nothing/null reloads the previous page
+    	finish_redirect();
+    }
+
+    /*** token refresh mode ***/
+    if(request_var('refresh','') == "true") {
+    	// refresh token
+    	$api = new JanrainCaptureAPI();
+    	$api->refresh_access_token();
     	finish_redirect();
     }
 
@@ -76,13 +83,11 @@
     // valid user returned?
     if ( is_array( $user_entity ) && $user_entity['stat'] == 'ok' ) {
       $user_entity = $user_entity['result'];
-      
+
       /* @@@ BEGIN map custom profile fields @@@ */
       // $data[<custom profile field>] = $user_entity[<capture profile field>]
       $data['gender']   = $user_entity['gender'];
       $data['location'] = $user_entity['currentLocation'];
-      //$loc = $user_entity['primaryAddress']['city'] . ', ' . $user_entity['primaryAddress']['stateAbbreviation'];
-      //$loc = (trim($loc) == ",") ? null : $loc;
       /* @@@ END map custom profile fields @@@ */
 
       // lookup local user based on returned uuid
